@@ -10,30 +10,68 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-let keepRunning = true;
-setTimeout(() => { 
-    keepRunning = false; 
-}, 10000);
+class Vec2 {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
 
-let oldTime = (Date.now() / 1000);
-function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'hsl(200, 100%, 70%)';
-    ctx.beginPath();
-    ctx.moveTo(100, 100);
-    ctx.lineTo(900, 600);
-    ctx.closePath();
-    ctx.stroke();
+    addVec(v) {
+        this.x += v.x;
+        this.y += v.y;
+    }
 
-    ctx.font = "32px Arial";
-    ctx.fillStyle = 'hsl(200, 100%, 70%)';
-    let timeLeft = (10 - ((Date.now() / 1000) - oldTime)).toFixed(2);
-    ctx.fillText(timeLeft, 50, 50);
-    
-    if(keepRunning)
-        requestAnimationFrame(loop);
-    else
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    addMult(v, s) {
+        this.addVec(this.multiplied(v, s));
+    }
+
+    static multiplied(v, s) {
+        return new Vec2(v.x * s, v.y * s);
+    }
+
+    static cross(a, b) {
+        return a.x * b.y - a.y * b.x;
+    }
 }
-loop();
+
+class Body {
+    constructor(shape, x, y) {
+        this.position = new Vec2(x, y);
+        this.velocity = new Vec2(0, 0);
+        this.force = new Vec2(0, 0);
+        this.orient = (Math.random() - 0.5) * Math.PI;
+        this.angularVelocity = 0;
+        this.torque = 0;
+        this.staticFriction = 0.5;
+        this.dynamicFriction = 0.3;
+        this.restitution = 0.2;
+        this.mass = 0;
+        this.invMass = 0;
+        this.inertia = 0;
+        this.invInertia = 0;
+        this.shape = shape;
+        //shape.body = this;
+        //shape.initialize();
+    }
+
+    applyForce(force) {
+        this.force.addVec(force);
+    }
+
+    applyImpulse(impulse, contactVector) {
+        this.velocity.addMult(impulse, this.invMass);
+        this.angularVelocity += this.invInertia * Vec2.cross(contactVector, impulse);
+    }
+
+    setStatic() {
+        this.mass = 0;
+        this.invMass = 0;
+        this.inertia = 0;
+        this.invInertia = 0;
+    }
+
+    setOrient(radians) {
+        orient = radians;
+        //this.shape.setOrient(radians);
+    }
+}
