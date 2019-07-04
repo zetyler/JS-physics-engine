@@ -116,7 +116,7 @@ class Shape {
             }*/
         }
     }
-    
+
     clone() {
         if (this.type === 'c') {
             return new Shape({
@@ -138,10 +138,31 @@ class Shape {
         }
     }
 
-    initialize() {}
-    computeMass(density) {}
-    setOrient(radians) {}
-    getType() {}
+    initialize() {
+        this.computeMass(1);
+    }
+
+    computeMass(density) {
+        if (this.type === 'c') {
+            /*this.body.mass = Math.PI * this.radius * this.radius * density;
+            this.body.invMass = (this.body.mass !== 0) ? (1 / this.body.mass) : 0;
+            this.body.inertia = this.body.mass * this.radius * this.radius;
+            this.body.invInertia = (this.body.inertia !== 0) ? (1 / this.body.inertia) : 0;*/
+        }
+        else if (this.type === 'p') {
+            //We'll get there...
+        }
+    }
+    
+    setOrient(radians) {
+        if (this.type === 'p') {
+            //this.u.set(radians);
+        }
+    }
+    
+    /*getType() {
+        return this.type;
+    }*/
 }
 
 class Body {
