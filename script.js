@@ -51,12 +51,37 @@ class Vec2 {
     }
 }
 
+class Mat2 {
+    constructor() {
+        this.m00 = 0;
+        this.m01 = 0;
+        this.m10 = 0;
+        this.m11 = 0;
+    }
+
+    set(radians) {
+        let c = Math.cos(radians);
+        let s = Math.sin(radians);
+
+        this.m00 = c;
+        this.m01 = -s;
+        this.m10 = s;
+        this.m11 = c;
+    }
+
+    set(mat) {
+        this.m00 = mat.m00;
+        this.m01 = mat.m01;
+        this.m10 = mat.m10;
+        this.m11 = mat.m11;
+    }
+}
+
 class Shape {
     constructor(params) {
         this.type = params.type;
         this.radius = 0;
-        //this.body;
-        //this.u = new Mat2();
+        this.u = new Mat2();
         if (this.type === 'c') {
             this.radius = params.radius;
         }
@@ -128,7 +153,7 @@ class Shape {
             let s = new Shape({
                 type: 'p'
             });
-            //s.u.set(this.u);
+            s.u.set(this.u);
             for (let i = 0; i < this.vertexCount; ++i) {
                 s.vertices[i].set(this.vertices[i]);
                 s.normals[i].set(this.normals[i]);
@@ -144,10 +169,10 @@ class Shape {
 
     computeMass(density) {
         if (this.type === 'c') {
-            /*this.body.mass = Math.PI * this.radius * this.radius * density;
+            this.body.mass = Math.PI * this.radius * this.radius * density;
             this.body.invMass = (this.body.mass !== 0) ? (1 / this.body.mass) : 0;
             this.body.inertia = this.body.mass * this.radius * this.radius;
-            this.body.invInertia = (this.body.inertia !== 0) ? (1 / this.body.inertia) : 0;*/
+            this.body.invInertia = (this.body.inertia !== 0) ? (1 / this.body.inertia) : 0;
         }
         else if (this.type === 'p') {
             //We'll get there...
@@ -156,7 +181,7 @@ class Shape {
     
     setOrient(radians) {
         if (this.type === 'p') {
-            //this.u.set(radians);
+            this.u.set(radians);
         }
     }
     
@@ -181,8 +206,8 @@ class Body {
         this.inertia = 0;
         this.invInertia = 0;
         this.shape = shape;
-        //shape.body = this;
-        //shape.initialize();
+        shape.body = this;
+        shape.initialize();
     }
 
     applyForce(force) {
@@ -203,6 +228,83 @@ class Body {
 
     setOrient(radians) {
         orient = radians;
-        //this.shape.setOrient(radians);
+        this.shape.setOrient(radians);
+    }
+}
+
+class ImpulseScene {
+    constructor(dt, iterations) {
+        this.dt = dt;
+        this.iterations = iterations;
+        this.bodies = [];
+        this.contacts = [];
+    }
+
+    step() {
+        this.contacts.length = 0;
+        for (let i = 0; i < this.bodies.length; ++i) {
+            let bodyA = bodies[i];
+            for(let j = i + 1; j < this.bodies.length; ++j) {
+                let bodyB = bodies[j];
+
+                if(bodyA.invMass === 0 && bodyB.invMass === 0) {
+                    continue;
+                }
+
+                /*Manifold m = new Manifold(bodyA, bodyB);
+                m.solve();
+
+                if (m.contactCount > 0) {
+                    this.contacts.add(m);
+                }*/
+            }
+        }
+
+        /*
+        // Integrate forces
+        for (let i = 0; i < this.bodies.length; ++i) {
+            this.integrateForces(this.bodies[i], this.dt);
+        }
+
+        // Initialize collision
+        for (let i = 0; i < this.bodies.length; ++i) {
+            this.contacts[i].initialize();
+        }
+
+        // Solve collisions
+        for (let j = 0; j < this.iterations; ++j) {
+            for (let i = 0; i < this.contacts.length; ++i) {
+                this.contacts[i].applyImpulse();
+            }
+        }
+
+        // Integrate velocities
+        for (let i = 0; i < this.bodies.length; ++i) {
+            this.integrateVelocity(this.bodies[i], dt);
+        }
+
+        // Correct positions
+        for (let i = 0; i < this.contacts.length; ++i) {
+            this.contacts[i].positionalCorrection();
+        }
+
+        // Clear all forces
+        for (let i = 0; i < this.bodies.length; ++i) {
+            let b = bodies[i];
+            b.force.set(0, 0);
+            b.torque = 0;
+        }
+        */
+    }
+
+    add(shape, x, y) {
+        let b = new Body(shape, x, y);
+        this.bodies.push(b);
+        return b;
+    }
+
+    clear() {
+        this.contacts.length = 0;
+        this.bodies.length = 0;
     }
 }
