@@ -34,6 +34,10 @@ class Vec2 {
         this.addVec(this.multiplied(v, s));
     }
 
+    lengthSq() {
+        return this.x * this.x + this.y * this.y;
+    }
+
     static multiplied(v, s) {
         return new Vec2(v.x * s, v.y * s);
     }
@@ -76,6 +80,34 @@ class Mat2 {
         this.m11 = mat.m11;
     }
 }
+
+const ImpulseMath = {
+    EPSILON: 0.0001,
+    EPSILON_SQ: () => {
+        return this.EPSILON * this.EPSILON;
+    },
+    BIAS_RELATIVE: 0.95,
+    BIAS_ABSOLUTE: 0.01,
+    DT: 1 / 60,
+    GRAVITY: new Vec2(0, 50),
+    RESTING: () => {
+        return multiplied(this.GRAVITY, this.DT).lengthSq() + this.EPSILON;
+    },
+    PENETRATION_ALLOWANCE: 0.05,
+    PENETRATION_CORRECTION: 0.4,
+    equal: (a, b) => {
+        return Math.abs(a - b) <= this.EPSILON;
+    },
+    clamp: (min, max, val) => {
+        return (val < min ? min : (val > max ? max : val));
+    },
+    random: (min, max) => {
+        return (max - min) * Math.random() + min;
+    },
+    gt: (a, b) => {
+        return a >= (b * this.BIAS_RELATIVE + a * this.BIAS_ABSOLUTE);
+    }
+};
 
 class Shape {
     constructor(params) {
@@ -306,5 +338,28 @@ class ImpulseScene {
     clear() {
         this.contacts.length = 0;
         this.bodies.length = 0;
+    }
+
+    integrateForces(body, dt) {
+        if (body.invMass === 0) {
+            return;
+        }
+
+        let dts = dt * 0.5;
+        body.velocity.addMult(body.force, body.invMass * dts);
+        body.velocity.addMult(ImpulseMath.GRAVITY, dts);
+        body.angularVelocity += body.torque * body.invInertia * dts;
+    }
+
+    integrateVelocity(body, dt) {
+        if(body.invMass === 0) {
+            return;
+        }
+
+        body.position.addMult(body.velocity, dt);
+        body.orient += body.angularVelocity * dt;
+        body.setOrient(body.orient);
+
+        this.integrateForces(body, dt);
     }
 }
