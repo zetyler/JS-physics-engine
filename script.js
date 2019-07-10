@@ -12,7 +12,8 @@ resize();
 
 class Vec2 {
     constructor(x, y) {
-        this.set(x, y);
+        this.x = x;
+        this.y = y;
     }
 
     set(x, y) {
@@ -114,6 +115,8 @@ class Shape {
         this.type = params.type;
         this.radius = 0;
         this.u = new Mat2();
+        // Obviously there's a better way to do this in JS (using subclasses and such),
+        // but I'm trying to keep it as Scratch-like as possible to make it easier to port.
         if (this.type === 'c') {
             this.radius = params.radius;
         }
@@ -262,6 +265,14 @@ class Body {
         orient = radians;
         this.shape.setOrient(radians);
     }
+
+    renderBody(ctx) {
+        if (this.shape.type === 'c') { //Again, this isn't the best way, but I'm keeping it closer to Scratch
+            ctx.beginPath();
+            ctx.arc(this.position.x, this.position.y, this.shape.radius, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+    }
 }
 
 class ImpulseScene {
@@ -362,4 +373,29 @@ class ImpulseScene {
 
         this.integrateForces(body, dt);
     }
+
+    render(canvas, ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Render bodies
+        for (let i = 0; i < this.bodies.length; ++i) {
+            this.bodies[i].renderBody(ctx);
+        }
+    }
 }
+
+let scene = new ImpulseScene(0, 0);
+scene.add(new Shape({
+    type: 'c',
+    radius: 10
+}), 100, 100);
+scene.add(new Shape({
+    type: 'c',
+    radius: 100
+}), 500, 300);
+
+function loop() {
+    scene.render(canvas, ctx);
+    requestAnimationFrame(loop);
+}
+loop();
