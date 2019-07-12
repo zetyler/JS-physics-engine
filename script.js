@@ -21,18 +21,42 @@ class Vec2 {
         this.y = y;
     }
 
-    set(v) {
+    setVec(v) {
         this.x = v.x;
         this.y = v.y;
     }
 
-    addVec(v) {
+    add(v) {
         this.x += v.x;
         this.y += v.y;
     }
 
+    subtract(v) {
+        this.x -= v.x;
+        this.y -= v.y;
+    }
+
+    plus(v) {
+        return new Vec2(this.x + v.x, this.y + v.y);
+    }
+
+    minus(v) {
+        return new Vec2(this.x - v.x, this.y - v.y);
+    }
+
     addMult(v, s) {
-        this.addVec(this.multiplied(v, s));
+        this.add(this.multiplied(v, s));
+    }
+
+    mult(s) {
+        this.x *= s;
+        this.y *= s;
+    }
+
+    normalize() {
+        let mag = Math.sqrt(this.lengthSq());
+        this.x /= mag;
+        this.y /= mag;
     }
 
     lengthSq() {
@@ -135,7 +159,7 @@ class Shape {
                 normals[2].set(0, 1);
                 normals[3].set(-1, 0);
             }
-            /*else {
+            else {
                 let verts = params.vertices;
                 // Find the right most point on the hull
                 let rightMost = 0;
@@ -171,9 +195,42 @@ class Shape {
                         }
 
                         // Cross every set of three unique verts
+                        let e1 = verts[nextHullIndex].minus(verts[hull[outCount]]);
+                        let e2 = verts[i].minus(verts[hull[outCount]]);
+                        let c = Vec2.cross(e1, e2);
+                        if (c < 0) {
+                            nextHullIndex = i;
+                        }
+
+                        // Cross product is zero if e vectors are on the same line
+                        // If they are, record the vertex farthest along the line
+                        if (c == 0 && e2.lengthSq() > e1.lengthSq()) {
+                            nextHullIndex = i;
+                        }
+                    }
+
+                    ++outCount;
+                    indexHull = nextHullIndex;
+
+                    // End algorithm on wrap-around
+                    if (nextHullIndex == rightMost) {
+                        this.vertexCount = outCount;
+                        break;
                     }
                 }
-            }*/
+
+                // Copy vertices to shape's vertices
+                for (let i = 0; i < this.vertexCount; ++i) {
+                    this.vertices[i].setVec(verts[hull[i]]);
+                }
+
+                // Compute face normals, get vectors between points and rotate them 90 degrees inwards
+                for (let i = 0; i < this.vertexCount; ++i) {
+                    let face = this.vertices[(i + 1) % this.vertexCount].minus(this.vertices[i]);
+                    this.normals[i].set(face.y, -face.x);
+                    this.normals[i].normalize();
+                }
+            }
         }
     }
 
@@ -190,8 +247,8 @@ class Shape {
             });
             s.u.set(this.u);
             for (let i = 0; i < this.vertexCount; ++i) {
-                s.vertices[i].set(this.vertices[i]);
-                s.normals[i].set(this.normals[i]);
+                s.vertices[i].setVec(this.vertices[i]);
+                s.normals[i].setVec(this.normals[i]);
             }
             s.vertexCount = this.vertexCount;
             return s;
@@ -210,7 +267,41 @@ class Shape {
             this.body.invInertia = (this.body.inertia !== 0) ? (1 / this.body.inertia) : 0;
         }
         else if (this.type === 'p') {
-            //We'll get there...
+            let centroid = new Vec2(0, 0);
+            let area = 0;
+            let I = 0;
+            const k_inv3 = (1 / 3);
+
+            for (let i = 0; i < this.vertexCount; ++i) {
+                let p1 = this.vertices[i];
+                let p2 = this.vertices[(i + 1) % this.vertexCount];
+
+                let D = Vec2.cross(p1, p2);
+                let triArea = 0.5 * D;
+                
+                area += triArea;
+
+                // Weight the centroid average based on area
+                let weight = triArea * k_inv3;
+                centroid.addMult(p1, weight);
+                centroid.addMult(p2, weight);
+
+                let intx2 = p1.x * p1.x + p2.x * p1.x + p2.x * p2.x;
+                let inty2 = p1.y * p1.y + p2.y * p1.y + p2.y * p2.y;
+                I += (0.25 * k_inv3 * D) * (intx2 + inty2);
+            }
+
+            centroid.mult(1 / area);
+
+            // Translate vertices to centroid
+            for (let i = 0; i < this.vertexCount; ++i) {
+                this.vertices[i].subtract(centroid);
+            }
+
+            this.body.mass = density * area;
+            this.body.invMass = (this.body.mass != 0) ? (1 / this.body.mass) : 0;
+            this.body.inertia = I * density;
+            this.body.invInertia = (this.body.inertia != 0) ? (1 / this.body.inertia) : 0;
         }
     }
     
@@ -223,6 +314,8 @@ class Shape {
     /*getType() {
         return this.type;
     }*/
+
+    // getSupport() method from Polygon
 }
 
 class Body {
@@ -246,7 +339,7 @@ class Body {
     }
 
     applyForce(force) {
-        this.force.addVec(force);
+        this.force.add(force);
     }
 
     applyImpulse(impulse, contactVector) {
